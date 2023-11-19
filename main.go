@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/cors"
@@ -20,27 +21,23 @@ type apiConfig struct {
 }
 
 func main() {
-
 	godotenv.Load(".env")
 
 	portString := os.Getenv("PORT")
-	if portString == "" {
-		log.Fatal("PORT is not found in environment")
-	}
+	if portString == "" { log.Fatal("PORT is not found in environment") }
 
 	dbURL := os.Getenv("DB_URL")
-	if dbURL == "" {
-		log.Fatal("DB_URL is not found in environment")
-	}
+	if dbURL == "" { log.Fatal("DB_URL is not found in environment") }
 
 	conn, err := sql.Open("postgres", dbURL)
-	if err != nil {
-		log.Fatal("Can't connect to database:", err)
+	if err != nil { log.Fatal("Can't connect to database:", err) }
+
+	db := database.New(conn)
+	apiCfg := apiConfig{
+		DB: db,
 	}
 
-	apiCfg := apiConfig{
-		DB: database.New(conn),
-	}
+	go startScraping(db, 10, time.Minute)
 
 	router := chi.NewRouter()
 
@@ -76,7 +73,5 @@ func main() {
 
 	log.Printf("Server starting on port %v", portString)
 	err = srv.ListenAndServe()
-	if err != nil {
-		log.Fatal(err)
-	}
+	if err != nil { log.Fatal(err) }
 }
